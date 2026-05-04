@@ -54,6 +54,9 @@ import com.sweetcode.lumi.ui.components.LibraryEntryCard
 import com.sweetcode.lumi.ui.library.components.FeaturedHero
 import com.sweetcode.lumi.ui.library.components.HorizontalSection
 import com.sweetcode.lumi.ui.library.components.SearchOverlay
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.runtime.setValue
 
 @Composable
 fun LibraryScreen(
@@ -63,6 +66,9 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    var sortSheetOpen by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.reloadProgress()
@@ -74,10 +80,18 @@ fun LibraryScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         when {
-            state.isLoading -> CircularProgressIndicator(
+            state.isLoading -> Column(
                 modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.primary
-            )
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Escaneando tu biblioteca…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             state.error != null -> EmptyState(
                 icon = Icons.Rounded.Search,
@@ -97,7 +111,9 @@ fun LibraryScreen(
                 onCollectionClick = onCollectionClick,
                 onSearch = viewModel::openSearch,
                 onSettings = onSettingsClick,
-                onFilterChange = viewModel::setFilter
+                onSortClick = { sortSheetOpen = true },
+                onFilterChange = viewModel::setFilter,
+                onRefresh = viewModel::refresh
             )
         }
 
@@ -116,8 +132,17 @@ fun LibraryScreen(
             )
         }
     }
+
+    if (sortSheetOpen) {
+        com.sweetcode.lumi.ui.library.components.SortBottomSheet(
+            selected = state.sort,
+            onSelect = viewModel::setSort,
+            onDismiss = { sortSheetOpen = false }
+        )
+    }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeContent(
     state: LibraryUiState,
@@ -125,7 +150,9 @@ private fun HomeContent(
     onCollectionClick: (String) -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
-    onFilterChange: (LibraryFilter) -> Unit
+    onSortClick: () -> Unit,
+    onFilterChange: (LibraryFilter) -> Unit,
+    onRefresh: () -> Unit
 ) {
     val gridState = rememberLazyGridState()
 
@@ -135,7 +162,11 @@ private fun HomeContent(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(minSize = 140.dp),
@@ -178,15 +209,34 @@ private fun HomeContent(
             }
 
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Column(
-                    modifier = Modifier.padding(top = 16.dp)
-                ) {
-                    Text(
-                        text = "Tu biblioteca",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
-                    )
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Tu biblioteca",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
+                        androidx.compose.material3.TextButton(onClick = onSortClick) {
+                            androidx.compose.material3.Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Rounded.Sort,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = state.sort.label,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     FilterChipsRow(
                         selected = state.filter,
                         onSelect = onFilterChange

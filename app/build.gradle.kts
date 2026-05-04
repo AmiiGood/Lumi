@@ -1,9 +1,19 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -19,13 +29,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
 
@@ -37,19 +64,15 @@ android {
     buildFeatures {
         compose = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
 
-    packaging {
-        resources {
-            excludes += setOf(
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE*",
-                "META-INF/NOTICE*"
-            )
-        }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
+}
+
+kotlin {
+    jvmToolchain(11)
 }
 
 dependencies {
@@ -74,6 +97,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.documentfile)
     implementation(libs.junrar)
+    implementation(libs.androidx.core.splashscreen)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

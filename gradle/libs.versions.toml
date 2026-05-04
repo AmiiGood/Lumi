@@ -19,6 +19,7 @@ hiltNavigationCompose = "1.2.0"
 materialIconsExtended = "1.7.5"
 documentfile = "1.0.1"
 junrar = "7.5.5"
+splashscreen = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 junrar = { group = "com.github.junrar", name = "junrar", version.ref = "junrar" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

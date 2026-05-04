@@ -19,6 +19,12 @@ enum class LibraryFilter(val label: String, val type: MediaType?) {
     BOOK("Libros", MediaType.BOOK)
 }
 
+enum class LibrarySort(val label: String) {
+    ALPHABETICAL("Alfabético"),
+    RECENTLY_ADDED("Recién agregados"),
+    RECENTLY_READ("Recién leídos")
+}
+
 sealed class LibraryEntry {
     data class Single(val item: MediaItem) : LibraryEntry()
     data class Series(
@@ -40,6 +46,7 @@ data class LibraryUiState(
     val recentlyAdded: List<MediaItem> = emptyList(),
     val entries: List<LibraryEntry> = emptyList(),
     val filter: LibraryFilter = LibraryFilter.ALL,
+    val sort: LibrarySort = LibrarySort.ALPHABETICAL,
     val query: String = "",
     val isSearchOpen: Boolean = false,
     val error: String? = null
@@ -165,13 +172,34 @@ class LibraryViewModel @Inject constructor(
             } else {
                 items.map { LibraryEntry.Single(it) }
             }
-        }.sortedBy {
-            when (it) {
-                is LibraryEntry.Series -> it.name
-                is LibraryEntry.Single -> it.item.title
+        }
+
+        val sorted = when (current.sort) {
+            LibrarySort.ALPHABETICAL -> entries.sortedBy {
+                when (it) {
+                    is LibraryEntry.Series -> it.name.lowercase()
+                    is LibraryEntry.Single -> it.item.title.lowercase()
+                }
+            }
+            LibrarySort.RECENTLY_ADDED -> entries.sortedByDescending {
+                when (it) {
+                    is LibraryEntry.Series -> it.items.maxOf { item -> item.addedAt }
+                    is LibraryEntry.Single -> it.item.addedAt
+                }
+            }
+            LibrarySort.RECENTLY_READ -> entries.sortedByDescending {
+                when (it) {
+                    is LibraryEntry.Series -> it.items.count { item -> item.currentPage > 0 }
+                    is LibraryEntry.Single -> if (it.item.currentPage > 0) it.item.currentPage else -1
+                }
             }
         }
 
-        _state.value = current.copy(entries = entries)
+        _state.value = current.copy(entries = sorted)
+    }
+
+    fun setSort(sort: LibrarySort) {
+        _state.value = _state.value.copy(sort = sort)
+        recomputeEntries()
     }
 }

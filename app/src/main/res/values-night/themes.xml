@@ -1,12 +1,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.Lumi" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Lumi" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
     </style>
 
     <style name="Theme.Lumi.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#FAF7F2</item>
+        <item name="windowSplashScreenBackground">#13111A</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.Lumi</item>
     </style>
