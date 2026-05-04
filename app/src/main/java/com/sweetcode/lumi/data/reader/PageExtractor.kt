@@ -23,7 +23,7 @@ class PageExtractor @Inject constructor(
         File(context.cacheDir, "pages").apply { mkdirs() }
     }
 
-    suspend fun extractPages(itemId: String, uri: Uri, format: MediaFormat): List<File> = withContext(Dispatchers.IO) {
+    suspend fun extractImagePages(itemId: String, uri: Uri, format: MediaFormat): List<File> = withContext(Dispatchers.IO) {
         val target = File(pagesRoot, itemId)
 
         if (target.exists() && target.listFiles()?.isNotEmpty() == true) {
@@ -37,50 +37,15 @@ class PageExtractor @Inject constructor(
             when (format) {
                 MediaFormat.CBZ -> extractCbz(uri, target)
                 MediaFormat.CBR -> extractCbr(uri, target)
-                MediaFormat.PDF -> extractPdf(uri, target)
                 else -> emptyList()
             }
+        } catch (e: UnsupportedRarException) {
+            target.deleteRecursively()
+            throw e
         } catch (e: Exception) {
             target.deleteRecursively()
             emptyList()
         }
-    }
-
-    private fun extractPdf(uri: Uri, target: File): List<File> {
-        val pfd = context.contentResolver.openFileDescriptor(uri, "r") ?: return emptyList()
-        val files = mutableListOf<File>()
-        pfd.use {
-            android.graphics.pdf.PdfRenderer(it).use { renderer ->
-                val total = renderer.pageCount
-                val padLength = total.toString().length
-
-                for (i in 0 until total) {
-                    renderer.openPage(i).use { page ->
-                        val scale = 2 // 2x para mejor calidad
-                        val bitmap = android.graphics.Bitmap.createBitmap(
-                            page.width * scale,
-                            page.height * scale,
-                            android.graphics.Bitmap.Config.ARGB_8888
-                        )
-                        bitmap.eraseColor(android.graphics.Color.WHITE)
-                        page.render(
-                            bitmap,
-                            null,
-                            null,
-                            android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-                        )
-                        val pageNum = (i + 1).toString().padStart(padLength, '0')
-                        val out = File(target, "page_$pageNum.jpg")
-                        out.outputStream().use { fos ->
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, fos)
-                        }
-                        bitmap.recycle()
-                        files.add(out)
-                    }
-                }
-            }
-        }
-        return files.sortedWith(naturalOrderFile())
     }
 
     private fun extractCbz(uri: Uri, target: File): List<File> {
@@ -109,6 +74,10 @@ class PageExtractor @Inject constructor(
                 temp.outputStream().use { out -> input.copyTo(out) }
             } ?: return emptyList()
 
+            if (isRar5(temp)) {
+                throw UnsupportedRarException()
+            }
+
             val files = mutableListOf<File>()
             Archive(temp).use { archive ->
                 archive.fileHeaders
@@ -128,8 +97,25 @@ class PageExtractor @Inject constructor(
         }
     }
 
+    private fun isRar5(file: File): Boolean {
+        return try {
+            file.inputStream().use { input ->
+                val sig = ByteArray(8)
+                if (input.read(sig) < 8) return false
+                // RAR 5.0: 52 61 72 21 1A 07 01 00
+                sig[0] == 0x52.toByte() && sig[1] == 0x61.toByte() &&
+                        sig[2] == 0x72.toByte() && sig[3] == 0x21.toByte() &&
+                        sig[4] == 0x1A.toByte() && sig[5] == 0x07.toByte() &&
+                        sig[6] == 0x01.toByte()
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun clearCache(itemId: String) = withContext(Dispatchers.IO) {
         File(pagesRoot, itemId).deleteRecursively()
+        File(context.cacheDir, "pdf_pages/$itemId").deleteRecursively()
     }
 
     private fun String.isImage() = imageExtensions.any { this.lowercase().endsWith(it) }
@@ -156,3 +142,5 @@ class PageExtractor @Inject constructor(
         ta.size - tb.size
     }
 }
+
+class UnsupportedRarException : Exception("RAR5 no soportado. Convierte el archivo a CBZ o RAR4.")

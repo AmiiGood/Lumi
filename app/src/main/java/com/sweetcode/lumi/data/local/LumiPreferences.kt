@@ -43,7 +43,7 @@ class LumiPreferences @Inject constructor(
 
     val dynamicColor: Flow<Boolean> = context.dataStore.data.map { it[dynamicColorKey] ?: false }
 
-
+    private val lastReadPrefix = "lastread_"
     suspend fun setRootFolderUri(uri: String) {
         context.dataStore.edit { it[rootFolderKey] = uri }
     }
@@ -77,6 +77,7 @@ class LumiPreferences @Inject constructor(
         context.dataStore.edit {
             it[androidx.datastore.preferences.core.intPreferencesKey("$progressPrefix$itemId")] = page
             it[androidx.datastore.preferences.core.intPreferencesKey("$totalPagesPrefix$itemId")] = totalPages
+            it[androidx.datastore.preferences.core.longPreferencesKey("$lastReadPrefix$itemId")] = System.currentTimeMillis()
         }
     }
 
@@ -100,5 +101,9 @@ class LumiPreferences @Inject constructor(
         val raw = it[themeModeKey] ?: "SYSTEM"
         runCatching { com.sweetcode.lumi.data.model.ThemeMode.valueOf(raw) }
             .getOrDefault(com.sweetcode.lumi.data.model.ThemeMode.SYSTEM)
+    }
+
+    fun lastReadAt(itemId: String): kotlinx.coroutines.flow.Flow<Long> = context.dataStore.data.map {
+        it[androidx.datastore.preferences.core.longPreferencesKey("$lastReadPrefix$itemId")] ?: 0L
     }
 }

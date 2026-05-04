@@ -31,7 +31,8 @@ class LibraryRepository @Inject constructor(
             _items.value = cached.map { entity ->
                 val savedPage = preferences.progress(entity.id).firstOrNull() ?: 0
                 val savedTotal = preferences.totalPages(entity.id).firstOrNull() ?: 0
-                val item = entity.toDomain(currentPage = savedPage)
+                val lastRead = preferences.lastReadAt(entity.id).firstOrNull() ?: 0L
+                val item = entity.toDomain(currentPage = savedPage, lastReadAt = lastRead.takeIf { it > 0 })
                 if (savedTotal > 0) item.copy(pageCount = savedTotal) else item
             }
         } else {
@@ -48,9 +49,11 @@ class LibraryRepository @Inject constructor(
         val withProgress = scanned.map { item ->
             val savedPage = preferences.progress(item.id).firstOrNull() ?: 0
             val savedTotal = preferences.totalPages(item.id).firstOrNull() ?: 0
+            val lastRead = preferences.lastReadAt(item.id).firstOrNull() ?: 0L
             item.copy(
                 currentPage = savedPage,
-                pageCount = if (savedTotal > 0) savedTotal else item.pageCount
+                pageCount = if (savedTotal > 0) savedTotal else item.pageCount,
+                lastReadAt = lastRead.takeIf { it > 0 }
             )
         }
         _items.value = withProgress
@@ -62,9 +65,11 @@ class LibraryRepository @Inject constructor(
         val updated = current.map { item ->
             val savedPage = preferences.progress(item.id).firstOrNull() ?: 0
             val savedTotal = preferences.totalPages(item.id).firstOrNull() ?: 0
+            val lastRead = preferences.lastReadAt(item.id).firstOrNull() ?: 0L
             item.copy(
                 currentPage = savedPage,
-                pageCount = if (savedTotal > 0) savedTotal else item.pageCount
+                pageCount = if (savedTotal > 0) savedTotal else item.pageCount,
+                lastReadAt = lastRead.takeIf { it > 0 }
             )
         }
         _items.value = updated

@@ -52,6 +52,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.sweetcode.lumi.data.model.ThemeMode
 import androidx.compose.foundation.layout.size
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Mail
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,6 +206,48 @@ fun SettingsScreen(
                     title = "Limpiar cache del lector",
                     subtitle = "Las páginas se extraerán de nuevo al abrir",
                     onClick = { viewModel.clearReaderCache() }
+                )
+            }
+
+            item { Divider() }
+            item { SectionTitle("Acerca de Lumi") }
+
+            item {
+                val context = LocalContext.current
+                SettingRow(
+                    icon = Icons.Rounded.Favorite,
+                    title = "Apoyar el desarrollo",
+                    subtitle = "Lumi es gratis y sin anuncios. Si te gusta, considera invitarme un café",
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/amiigood"))
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            item {
+                val context = LocalContext.current
+                SettingRow(
+                    icon = Icons.Rounded.Mail,
+                    title = "Contacto",
+                    subtitle = "alexisalvarez1234563@outlook.com",
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:alexisalvarez1234563@outlook.com")
+                            putExtra(Intent.EXTRA_SUBJECT, "Lumi - ")
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            item {
+                val context = LocalContext.current
+                SettingRow(
+                    icon = Icons.Rounded.Code,
+                    title = "Versión",
+                    subtitle = "1.0",
+                    onClick = null
                 )
             }
         }

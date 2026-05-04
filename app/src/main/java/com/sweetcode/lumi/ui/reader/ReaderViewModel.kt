@@ -10,6 +10,9 @@ import com.sweetcode.lumi.data.model.MediaItem
 import com.sweetcode.lumi.data.model.ReadingMode
 import com.sweetcode.lumi.data.reader.EpubBookExtractor
 import com.sweetcode.lumi.data.reader.PageExtractor
+import com.sweetcode.lumi.data.reader.PageRef
+import com.sweetcode.lumi.data.reader.PdfPageSource
+import com.sweetcode.lumi.data.reader.PdfPageSourceFactory
 import com.sweetcode.lumi.data.repository.LibraryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +29,7 @@ sealed class ReaderUiState {
     data class Error(val message: String) : ReaderUiState()
     data class ImageReady(
         val item: MediaItem,
-        val pages: List<File>,
+        val pages: List<PageRef>,
         val initialPage: Int,
         val showTutorial: Boolean,
         val mode: ReadingMode
@@ -45,6 +48,7 @@ class ReaderViewModel @Inject constructor(
     private val repository: LibraryRepository,
     private val pageExtractor: PageExtractor,
     private val epubExtractor: EpubBookExtractor,
+    private val pdfPageSourceFactory: PdfPageSourceFactory,
     private val preferences: LumiPreferences
 ) : ViewModel() {
 
@@ -52,6 +56,8 @@ class ReaderViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
+
+    private var pdfSource: PdfPageSource? = null
 
     init {
         load()
@@ -66,35 +72,65 @@ class ReaderViewModel @Inject constructor(
             }
 
             when (item.format) {
-                MediaFormat.CBZ, MediaFormat.CBR, MediaFormat.PDF -> {
-                    val pages = pageExtractor.extractPages(item.id, Uri.parse(item.filePath), item.format)
-                    if (pages.isEmpty()) {
-                        _state.value = ReaderUiState.Error("No se pudieron extraer las páginas")
-                    } else {
-                        val tutorialSeen = preferences.readerTutorialDone.firstOrNull() ?: false
-                        val mode = preferences.readingMode(item.id).firstOrNull() ?: ReadingMode.PAGED
-                        _state.value = ReaderUiState.ImageReady(
-                            item = item,
-                            pages = pages,
-                            initialPage = (preferences.progress(item.id).firstOrNull() ?: 0).coerceIn(0, pages.lastIndex),
-                            showTutorial = !tutorialSeen,
-                            mode = mode
-                        )
-                    }
-                }
-                MediaFormat.EPUB -> {
-                    val extracted = epubExtractor.extract(item.id, Uri.parse(item.filePath))
-                    if (extracted == null) {
-                        _state.value = ReaderUiState.Error("No se pudo abrir el EPUB")
-                    } else {
-                        _state.value = ReaderUiState.EpubReady(
-                            item = item,
-                            htmlFile = extracted.htmlFile,
-                            initialProgress = preferences.progress(item.id).firstOrNull() ?: 0
-                        )
-                    }
-                }
+                MediaFormat.CBZ, MediaFormat.CBR -> loadImagePages(item)
+                MediaFormat.PDF -> loadPdf(item)
+                MediaFormat.EPUB -> loadEpub(item)
             }
+        }
+    }
+
+    private suspend fun loadImagePages(item: MediaItem) {
+        try {
+            val files = pageExtractor.extractImagePages(item.id, Uri.parse(item.filePath), item.format)
+            if (files.isEmpty()) {
+                _state.value = ReaderUiState.Error("No se pudieron extraer las páginas")
+                return
+            }
+            val pages = files.map { PageRef.Direct(it) }
+            emitImageReady(item, pages)
+        } catch (e: com.sweetcode.lumi.data.reader.UnsupportedRarException) {
+            _state.value = ReaderUiState.Error(e.message ?: "Formato no soportado")
+        } catch (e: Exception) {
+            _state.value = ReaderUiState.Error("Error al abrir: ${e.message}")
+        }
+    }
+
+    private suspend fun loadPdf(item: MediaItem) {
+        val source = pdfPageSourceFactory.create(item.id, Uri.parse(item.filePath))
+        pdfSource = source
+        val total = source.open()
+        if (total == 0) {
+            _state.value = ReaderUiState.Error("PDF vacío o inválido")
+            return
+        }
+        val pages = (0 until total).map { idx ->
+            PageRef.LazyPdf(item.id, idx, source)
+        }
+        emitImageReady(item, pages)
+    }
+
+    private suspend fun emitImageReady(item: MediaItem, pages: List<PageRef>) {
+        val tutorialSeen = preferences.readerTutorialDone.firstOrNull() ?: false
+        val mode = preferences.readingMode(item.id).firstOrNull() ?: ReadingMode.PAGED
+        _state.value = ReaderUiState.ImageReady(
+            item = item,
+            pages = pages,
+            initialPage = (preferences.progress(item.id).firstOrNull() ?: 0).coerceIn(0, pages.lastIndex),
+            showTutorial = !tutorialSeen,
+            mode = mode
+        )
+    }
+
+    private suspend fun loadEpub(item: MediaItem) {
+        val extracted = epubExtractor.extract(item.id, Uri.parse(item.filePath))
+        if (extracted == null) {
+            _state.value = ReaderUiState.Error("No se pudo abrir el EPUB")
+        } else {
+            _state.value = ReaderUiState.EpubReady(
+                item = item,
+                htmlFile = extracted.htmlFile,
+                initialProgress = preferences.progress(item.id).firstOrNull() ?: 0
+            )
         }
     }
 
@@ -118,6 +154,15 @@ class ReaderViewModel @Inject constructor(
     fun saveProgress(currentPage: Int, totalPages: Int) {
         viewModelScope.launch {
             preferences.setProgress(itemId, currentPage, totalPages)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        val source = pdfSource
+        if (source != null) {
+            kotlinx.coroutines.GlobalScope.launch { source.close() }
+            pdfSource = null
         }
     }
 }

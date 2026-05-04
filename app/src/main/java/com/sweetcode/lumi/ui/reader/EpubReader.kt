@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.io.File
+import androidx.compose.runtime.DisposableEffect
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -66,6 +67,20 @@ fun EpubReader(
     var totalPages by remember { mutableIntStateOf(0) }
     var showOverlay by remember { mutableStateOf(true) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            webViewRef?.apply {
+                stopLoading()
+                loadUrl("about:blank")
+                clearHistory()
+                removeJavascriptInterface("LumiBridge")
+                (parent as? android.view.ViewGroup)?.removeView(this)
+                destroy()
+            }
+            webViewRef = null
+        }
+    }
 
     LaunchedEffect(showOverlay) {
         if (showOverlay) {

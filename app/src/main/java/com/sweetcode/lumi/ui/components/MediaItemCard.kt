@@ -20,10 +20,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sweetcode.lumi.data.model.MediaItem
 import com.sweetcode.lumi.ui.library.LibraryEntry
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 
 @Composable
 fun LibraryEntryCard(

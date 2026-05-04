@@ -19,10 +19,11 @@ class CacheCleaner @Inject constructor(
     suspend fun clearExtractedPages() = withContext(Dispatchers.IO) {
         File(context.cacheDir, "pages").deleteRecursively()
         File(context.cacheDir, "epubs").deleteRecursively()
+        File(context.cacheDir, "pdf_pages").deleteRecursively()
     }
 
     suspend fun cacheSize(): Long = withContext(Dispatchers.IO) {
-        val dirs = listOf("covers", "pages", "epubs").map { File(context.cacheDir, it) }
+        val dirs = listOf("covers", "pages", "epubs", "pdf_pages").map { File(context.cacheDir, it) }
         dirs.sumOf { dir -> if (dir.exists()) dir.walk().filter { it.isFile }.sumOf { it.length() } else 0L }
     }
 }

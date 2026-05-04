@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.update
 
 enum class LibraryFilter(val label: String, val type: MediaType?) {
     ALL("Todos", null),
@@ -119,39 +120,24 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun recomputeAll() {
-        recomputeFeatured()
-        recomputeContinueReading()
-        recomputeRecentlyAdded()
-        recomputeEntries()
-    }
+        val current = _state.value
+        val all = current.allItems
 
-    private fun recomputeFeatured() {
-        val current = _state.value.allItems
-        val featured = current
+        val featured = all
             .filter { it.currentPage > 0 && it.pageCount > 0 && it.currentPage < it.pageCount - 1 }
             .maxByOrNull { it.currentPage }
-            ?: current.firstOrNull()
-        _state.value = _state.value.copy(featured = featured)
-    }
+            ?: all.firstOrNull()
 
-    private fun recomputeContinueReading() {
-        val items = _state.value.allItems
+        val continueReading = all
             .filter { it.currentPage > 0 && it.pageCount > 0 && it.currentPage < it.pageCount - 1 }
-            .sortedByDescending { it.currentPage }
+            .sortedByDescending { it.lastReadAt ?: 0L }
             .take(10)
-        _state.value = _state.value.copy(continueReading = items)
-    }
 
-    private fun recomputeRecentlyAdded() {
-        val items = _state.value.allItems
+        val recentlyAdded = all
             .sortedByDescending { it.addedAt }
             .take(10)
-        _state.value = _state.value.copy(recentlyAdded = items)
-    }
 
-    private fun recomputeEntries() {
-        val current = _state.value
-        val filtered = current.allItems
+        val filtered = all
             .filter { current.filter.type == null || it.type == current.filter.type }
             .filter {
                 current.query.isBlank() ||
@@ -189,14 +175,23 @@ class LibraryViewModel @Inject constructor(
             }
             LibrarySort.RECENTLY_READ -> entries.sortedByDescending {
                 when (it) {
-                    is LibraryEntry.Series -> it.items.count { item -> item.currentPage > 0 }
-                    is LibraryEntry.Single -> if (it.item.currentPage > 0) it.item.currentPage else -1
+                    is LibraryEntry.Series -> it.items.maxOfOrNull { item -> item.lastReadAt ?: 0L } ?: 0L
+                    is LibraryEntry.Single -> it.item.lastReadAt ?: 0L
                 }
             }
         }
 
-        _state.value = current.copy(entries = sorted)
+        _state.update {
+            it.copy(
+                featured = featured,
+                continueReading = continueReading,
+                recentlyAdded = recentlyAdded,
+                entries = sorted
+            )
+        }
     }
+
+    private fun recomputeEntries() = recomputeAll()
 
     fun setSort(sort: LibrarySort) {
         _state.value = _state.value.copy(sort = sort)

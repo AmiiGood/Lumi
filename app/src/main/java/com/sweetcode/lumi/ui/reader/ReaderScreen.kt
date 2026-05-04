@@ -141,7 +141,7 @@ private fun ImageReader(
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     ZoomablePage(
-                        file = state.pages[page],
+                        page = state.pages[page],
                         onTap = { zone ->
                             when (zone) {
                                 TapZone.Left -> scope.launch {
