@@ -1,7 +1,8 @@
 package com.sweetcode.lumi.util
 
-import com.sweetcode.lumi.data.model.MediaFormat
-import com.sweetcode.lumi.data.model.MediaType
+import io.github.amiigood.lumi.lumi.data.model.MediaFormat
+import io.github.amiigood.lumi.lumi.data.model.MediaType
+import io.github.amiigood.lumi.lumi.util.FormatDetector
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNull
 import org.junit.Test

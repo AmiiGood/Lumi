@@ -27,7 +27,7 @@
 -keepnames class * extends androidx.compose.runtime.Composer
 
 # Conservar nuestras data classes (DataStore + Room)
--keep class com.sweetcode.lumi.data.model.** { *; }
--keep class com.sweetcode.lumi.data.local.** { *; }
+-keep class io.github.amiigood.lumi.data.model.** { *; }
+-keep class io.github.amiigood.lumi.data.local.** { *; }
 
 -dontwarn org.slf4j.impl.StaticLoggerBinder

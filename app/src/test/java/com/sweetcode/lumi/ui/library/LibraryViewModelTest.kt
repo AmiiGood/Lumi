@@ -1,10 +1,14 @@
 package com.sweetcode.lumi.ui.library
 
-import com.sweetcode.lumi.data.model.ItemMetadata
-import com.sweetcode.lumi.data.model.MediaFormat
-import com.sweetcode.lumi.data.model.MediaItem
-import com.sweetcode.lumi.data.model.MediaType
-import com.sweetcode.lumi.data.repository.LibraryRepository
+import io.github.amiigood.lumi.lumi.data.model.ItemMetadata
+import io.github.amiigood.lumi.lumi.data.model.MediaFormat
+import io.github.amiigood.lumi.lumi.data.model.MediaItem
+import io.github.amiigood.lumi.lumi.data.model.MediaType
+import io.github.amiigood.lumi.lumi.data.repository.LibraryRepository
+import io.github.amiigood.lumi.lumi.ui.library.LibraryEntry
+import io.github.amiigood.lumi.lumi.ui.library.LibraryFilter
+import io.github.amiigood.lumi.lumi.ui.library.LibrarySort
+import io.github.amiigood.lumi.lumi.ui.library.LibraryViewModel
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk

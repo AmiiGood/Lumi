@@ -1,5 +1,6 @@
 package com.sweetcode.lumi.data.parser
 
+import io.github.amiigood.lumi.lumi.data.parser.ComicInfoParser
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNull
 import org.junit.Test

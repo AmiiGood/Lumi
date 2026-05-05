@@ -17,15 +17,15 @@ plugins {
 }
 
 android {
-    namespace = "com.sweetcode.lumi"
+    namespace = "io.github.amiigood.lumi"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.sweetcode.lumi"
+        applicationId = "io.github.amiigood.lumi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
