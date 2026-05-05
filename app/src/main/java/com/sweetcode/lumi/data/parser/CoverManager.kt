@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +23,8 @@ class CoverManager @Inject constructor(
 ) {
 
     private val mutex = Mutex()
+    private val failedCache = ConcurrentHashMap.newKeySet<String>()
+
     private val coverDir: File by lazy {
         File(context.cacheDir, "covers").apply { mkdirs() }
     }
@@ -29,9 +32,12 @@ class CoverManager @Inject constructor(
     suspend fun getOrExtractCover(itemId: String, uri: Uri, format: MediaFormat): File? = withContext(Dispatchers.IO) {
         val target = File(coverDir, "$itemId.jpg")
         if (target.exists() && target.length() > 0) return@withContext target
+        if (failedCache.contains(itemId)) return@withContext null
 
         mutex.withLock {
             if (target.exists() && target.length() > 0) return@withLock target
+            if (failedCache.contains(itemId)) return@withLock null
+
             val parser = when (format) {
                 MediaFormat.CBZ -> cbzParser
                 MediaFormat.CBR -> cbrParser
@@ -39,7 +45,20 @@ class CoverManager @Inject constructor(
                 MediaFormat.PDF -> pdfParser
             }
             val ok = parser.extractCover(uri, target)
-            if (ok && target.length() > 0) target else null
+            if (ok && target.length() > 0) {
+                target
+            } else {
+                failedCache.add(itemId)
+                null
+            }
         }
+    }
+
+    fun retryItem(itemId: String) {
+        failedCache.remove(itemId)
+    }
+
+    fun clearFailedCache() {
+        failedCache.clear()
     }
 }

@@ -1,6 +1,7 @@
 package com.sweetcode.lumi.data
 
 import android.content.Context
+import com.sweetcode.lumi.data.parser.CoverManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -10,10 +11,12 @@ import javax.inject.Singleton
 
 @Singleton
 class CacheCleaner @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val coverManager: CoverManager
 ) {
     suspend fun clearCovers() = withContext(Dispatchers.IO) {
         File(context.cacheDir, "covers").deleteRecursively()
+        coverManager.clearFailedCache()
     }
 
     suspend fun clearExtractedPages() = withContext(Dispatchers.IO) {

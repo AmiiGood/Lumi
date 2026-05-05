@@ -17,6 +17,8 @@ import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 
 private data class ScannedFile(
     val docFile: DocumentFile,
@@ -41,12 +43,14 @@ class LibraryScanner @Inject constructor(
         scanned.map { it.toMediaItem() }
     }
 
-    private fun walk(
+    private suspend fun walk(
         dir: DocumentFile,
         parents: List<String>,
         out: MutableList<ScannedFile>
     ) {
+        coroutineContext.ensureActive()
         for (child in dir.listFiles()) {
+            coroutineContext.ensureActive()
             when {
                 child.isDirectory -> {
                     val newParents = parents + (child.name ?: "")
@@ -62,6 +66,7 @@ class LibraryScanner @Inject constructor(
     }
 
     private suspend fun ScannedFile.toMediaItem(): MediaItem {
+        coroutineContext.ensureActive()
         val name = docFile.name ?: "Untitled"
         val fallbackTitle = name.substringBeforeLast('.')
         val type = FormatDetector.inferTypeFromPath(parentFolders, format)

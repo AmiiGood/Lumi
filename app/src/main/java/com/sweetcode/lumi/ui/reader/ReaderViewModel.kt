@@ -54,6 +54,14 @@ class ReaderViewModel @Inject constructor(
 
     private val itemId: String = savedStateHandle.get<String>("itemId") ?: ""
 
+    private val savedStateKey = "current_page_$itemId"
+    private var savedStateHandleRef = savedStateHandle
+
+    private fun getSavedPage(): Int? = savedStateHandleRef.get<Int>(savedStateKey)
+    private fun setSavedPage(page: Int) {
+        savedStateHandleRef[savedStateKey] = page
+    }
+
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
 
@@ -112,10 +120,13 @@ class ReaderViewModel @Inject constructor(
     private suspend fun emitImageReady(item: MediaItem, pages: List<PageRef>) {
         val tutorialSeen = preferences.readerTutorialDone.firstOrNull() ?: false
         val mode = preferences.readingMode(item.id).firstOrNull() ?: ReadingMode.PAGED
+        val savedPage = getSavedPage()
+            ?: preferences.progress(item.id).firstOrNull()
+            ?: 0
         _state.value = ReaderUiState.ImageReady(
             item = item,
             pages = pages,
-            initialPage = (preferences.progress(item.id).firstOrNull() ?: 0).coerceIn(0, pages.lastIndex),
+            initialPage = savedPage.coerceIn(0, pages.lastIndex),
             showTutorial = !tutorialSeen,
             mode = mode
         )
@@ -126,10 +137,13 @@ class ReaderViewModel @Inject constructor(
         if (extracted == null) {
             _state.value = ReaderUiState.Error("No se pudo abrir el EPUB")
         } else {
+            val savedPage = getSavedPage()
+                ?: preferences.progress(item.id).firstOrNull()
+                ?: 0
             _state.value = ReaderUiState.EpubReady(
                 item = item,
                 htmlFile = extracted.htmlFile,
-                initialProgress = preferences.progress(item.id).firstOrNull() ?: 0
+                initialProgress = savedPage
             )
         }
     }
@@ -152,6 +166,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     fun saveProgress(currentPage: Int, totalPages: Int) {
+        setSavedPage(currentPage)
         viewModelScope.launch {
             preferences.setProgress(itemId, currentPage, totalPages)
         }
